@@ -47,17 +47,12 @@ def get_elems(driver, numerofposts = 5):
     return elems[0:numerofposts]
 
 def post_info(dataft): 
-    try: 
-        pageid = str(dataft['content_owner_id_new'])
-        actorid = dataft["page_insights"][pageid]['targets'][0]['actor_id']
-        postid = dataft["page_insights"][pageid]['targets'][0]['post_id']
-        # publish_time = dataft["page_insights"][pageid]['post_context']['publish_time']
-        dictionary = {"post_id" : f"{postid}", "page_id": f"{pageid}", "actor_id":f"{actorid}"}
-        return dictionary
-    except Exception:
-        dictionary = {"post_id" : f"{dataft['content_owner_id_new']}", "page_id": None, "actor_id":None}
-        return dictionary
-    
+    pageid = str(dataft['content_owner_id_new'])
+    actorid = dataft["page_insights"][pageid]['targets'][0]['actor_id']
+    postid = dataft["page_insights"][pageid]['targets'][0]['post_id']
+    # publish_time = dataft["page_insights"][pageid]['post_context']['publish_time']
+    dictionary = {"post_id" : f"{postid}", "page_id": f"{pageid}", "actor_id":f"{actorid}"}
+    return dictionary
 
 def get_posts_info(elems):
     post_data = []
@@ -118,9 +113,8 @@ def crawl_cmts_reps(driver,cursor, post_id):
 
 BASEURL = "https://www.facebook.com/"
 
-username ="0386483998"
-password = "4Xat-ReFSzW!idf"
-driver_path = 'C:\Workspaces\Crawler\chromedriver.exe'
+username ="cs232khcl@gmail.com"
+password = "definitelynotapassword"
 desktop_user = "DESKTOP-NHATMIN\DELL"
 server = 'DESKTOP-NHATMIN\SQLEXPRESS02'
 database = 'FB'
