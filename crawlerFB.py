@@ -12,12 +12,12 @@ import ast
 import random
 import store_data as store
 
-def create_driver():
+def create_driver(driver_path):
     chrome_options = webdriver.ChromeOptions()
     prefs = {"profile.default_content_setting_values.notifications" : 2}
     chrome_options.add_experimental_option("prefs",prefs)
     # chrome_options.headless = True
-    driver = webdriver.Chrome(service = Service('C:\Workspaces\Crawler\chromedriver.exe'), options=chrome_options)
+    driver = webdriver.Chrome(service = Service(driver_path), options=chrome_options)
     return driver
 
 def login_navigate(driver, usr, pwd, url):
@@ -30,7 +30,7 @@ def login_navigate(driver, usr, pwd, url):
     password.clear()
     password.send_keys(pwd)
 
-    WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))).click()
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))).click()
     time.sleep(4)
     url = url.replace("www", "touch")
     driver.get(url)
@@ -41,18 +41,23 @@ def get_elems(driver, numerofposts = 5):
 
     while len(elems) < numerofposts:
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
-        time.sleep(5)
+        time.sleep(10)
         elems = driver.find_elements(By.CSS_SELECTOR , "article")
 
     return elems[0:numerofposts]
 
 def post_info(dataft): 
-    pageid = str(dataft['content_owner_id_new'])
-    actorid = dataft["page_insights"][pageid]['targets'][0]['actor_id']
-    postid = dataft["page_insights"][pageid]['targets'][0]['post_id']
-    # publish_time = dataft["page_insights"][pageid]['post_context']['publish_time']
-    dictionary = {"post_id" : f"{postid}", "page_id": f"{pageid}", "actor_id":f"{actorid}"}
-    return dictionary
+    try: 
+        pageid = str(dataft['content_owner_id_new'])
+        actorid = dataft["page_insights"][pageid]['targets'][0]['actor_id']
+        postid = dataft["page_insights"][pageid]['targets'][0]['post_id']
+        # publish_time = dataft["page_insights"][pageid]['post_context']['publish_time']
+        dictionary = {"post_id" : f"{postid}", "page_id": f"{pageid}", "actor_id":f"{actorid}"}
+        return dictionary
+    except Exception:
+        dictionary = {"post_id" : f"{dataft['content_owner_id_new']}", "page_id": None, "actor_id":None}
+        return dictionary
+    
 
 def get_posts_info(elems):
     post_data = []
@@ -75,7 +80,7 @@ def pre_crawl_cmt(driver):
             viewmore_cmt = driver.find_element(By.CSS_SELECTOR, ".async_elem:not(.async_elem_preprocess) ._108_")
             WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "._108_")))
             viewmore_cmt.click()
-            time.sleep(random.randint(10,15))
+            time.sleep(random.randint(30,50))
         except NoSuchElementException:
             break
     
@@ -85,7 +90,7 @@ def pre_crawl_cmt(driver):
     for viewmore_rep in viewmore_reps:
         WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "._2b1h.async_elem")))
         viewmore_rep.click()
-        time.sleep(random.randint(10,15))
+        time.sleep(random.randint(30,50))
 
 def crawl_cmts_reps(driver,cursor, post_id):
     comments = driver.find_elements(By.CSS_SELECTOR, ":not(._2b1k) > ._2a_i")
@@ -113,35 +118,42 @@ def crawl_cmts_reps(driver,cursor, post_id):
 
 BASEURL = "https://www.facebook.com/"
 
-username ="cs232khcl@gmail.com"
-password = "definitelynotapassword"
+username ="0386483998"
+password = "4Xat-ReFSzW!idf"
+driver_path = 'C:\Workspaces\Crawler\chromedriver.exe'
 desktop_user = "DESKTOP-NHATMIN\DELL"
 server = 'DESKTOP-NHATMIN\SQLEXPRESS02'
 database = 'FB'
 frequently = 60*5
 
 url = input("Nhập link page facebook cần crawl: ")
-numberofpost = 5
+numberofpost = int(input("Số lượng bài viết: "))
 
-driver = create_driver()
+driver = create_driver(driver_path)
 store.check(server, database, desktop_user)
 cursor, cnxn = store.create_cursor(server, database)
 login_navigate(driver, username, password, url)
-
+i = 0
 while True:
+    if i == 1:
+        numberofpost = 5
+    i = 1
     elems = get_elems(driver, numberofpost)
     posts_data, post_urls = get_posts_info(elems)
 
     for i, post_url in enumerate(post_urls):
         if not store.post_exists(cursor, posts_data[i]):    
-            url = BASEURL+post_url
-            touch_url = url.replace("www", "touch")
-            driver.get(touch_url)
-            posts_data[i]["content"] = get_post_content(driver)
-            store.store_post(cursor, posts_data[i])
-            pre_crawl_cmt(driver)
-            post_id = posts_data[i]["post_id"]
-            crawl_cmts_reps(driver, cursor, post_id)
-            time.sleep(random.randint(40, 60))
+            try:
+                url = BASEURL+post_url
+                touch_url = url.replace("www", "touch")
+                driver.get(touch_url)
+                posts_data[i]["content"] = get_post_content(driver)
+                store.store_post(cursor, posts_data[i])
+                pre_crawl_cmt(driver)
+                post_id = posts_data[i]["post_id"]
+                crawl_cmts_reps(driver, cursor, post_id)
+                time.sleep(random.randint(60))
+            except Exception:
+                continue
 
     time.sleep(frequently)
